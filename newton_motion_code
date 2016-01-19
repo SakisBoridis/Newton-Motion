@@ -1,0 +1,189 @@
+#include "GL/freeglut.h"
+#include "GL/gl.h"
+#include <iostream>
+#include <cstdlib>
+#include <cmath>
+#include <ctime>
+
+using namespace std;
+
+
+double dt = 0.005;
+
+// constants
+double G=4*pow(10,0), m1=pow(10,3), m2=pow(10,1);
+
+// Initial Conditions
+////////////////////////////////////////////////
+double xp1=0, yp1=0, xp2=5, yp2=5;
+double ux1=0, uy1=0, ux2=5, uy2=-10;
+////////////////////////////////////////////////
+
+// variables and initial calculations
+double ax_new1, ay_new1, ax_new2, ay_new2;
+double dx=fabs(xp1-xp2), dy=fabs(yp1-yp2), r=sqrt(dx*dx + dy*dy);
+double F=(1.0*G*m1*m2)/(r*r);
+
+double Fx1 = (1.0*F*dx)/r;
+double Fy1 = (1.0*F*dy)/r;
+
+double Fx2 = -Fx1;
+double Fy2 = -Fy1;
+
+double ax1 = (1.0*Fx1)/m1; double ax2 = (1.0*Fx2)/m2;
+double ay1 = (1.0*Fy1)/m1; double ay2 = (1.0*Fy2)/m2;
+
+void setupMyWindow()
+{
+	glClearColor(0,0,0,0);
+	glMatrixMode(GL_PROJECTION);
+	glEnable(GL_POINT_SMOOTH);
+	
+	//glHint(GL_POINT_SMOOTH_HINT, GL_NICEST); 
+	//glEnable(GL_BLEND); 
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
+	glOrtho(-10, 10, -10, 10, -10 ,10);
+	glMatrixMode(GL_MODELVIEW);
+}
+
+void planet1()
+{
+    glPointSize(20);
+	glBegin(GL_POINTS);
+		glColor4d(1.0,0.6,0.0,0.9); glVertex2d(xp1,yp1);
+	glEnd();
+}
+
+void planet2()
+{
+    glPointSize(8);
+	glBegin(GL_POINTS);
+		glColor4d(0.4,0.9,0.0,0.9); glVertex2d(xp2,yp2);
+	glEnd();
+}
+
+double xstar[100],ystar[100];
+int flag=1, Nstar=100;
+void stars()
+{
+    if(flag==1)
+    {
+       for(int i=0; i<Nstar; i++)
+        {
+            xstar[i]=-10+1.0*((double)rand()*(10-(-10))/RAND_MAX);
+            ystar[i]=-10+1.0*((double)rand()*(10-(-10))/RAND_MAX);
+        }
+    }
+
+    for(int i=0; i<Nstar; i++)
+    {
+        if(i<10)    glPointSize(3);
+        else        glPointSize(1);
+
+        glBegin(GL_POINTS);
+            glColor3d(1.0,1.0,0.0);
+            glVertex2d(xstar[i],ystar[i]);
+        glEnd();
+    }
+    flag=0;
+}
+
+// verlet calculations
+void motion()
+{
+    xp1 = xp1 + ux1*dt + (1.0/2)*ax1*dt*dt;
+    yp1 = yp1 + uy1*dt + (1.0/2)*ay1*dt*dt;
+
+    xp2 = xp2 + ux2*dt + (1.0/2)*ax2*dt*dt;
+    yp2 = yp2 + uy2*dt + (1.0/2)*ay2*dt*dt;
+    cout << xp2 << "   " << yp2 << endl;
+
+    // new distances
+    dx = fabs(xp1-xp2);
+    dy = fabs(yp1-yp2);
+
+    r = sqrt(dx*dx + dy*dy);
+
+    // new forces
+    F = (1.0*G*m1*m2)/(r*r);
+    // cout << F << endl;
+
+    if(xp1>xp2)
+    {
+        Fx1 = -(1.0*F*dx)/r;
+    }
+    else Fx1 = (1.0*F*dx)/r;
+
+    if(yp1>yp2)
+    {
+        Fy1 = -(1.0*F*dy)/r;
+    }
+    else Fy1 = (1.0*F*dy)/r;
+
+    Fx2 = -Fx1;
+    Fy2 = -Fy1;
+
+    // new accelerations
+    ax_new1 = (1.0*Fx1)/m1; ax_new2 = (1.0*Fx2)/m2;
+    ay_new1 = (1.0*Fy1)/m1; ay_new2 = (1.0*Fy2)/m2;
+
+    // new velocities
+    ux1 = ux1 + (1.0/2)*(ax1+ax_new1)*dt;
+    uy1 = uy1 + (1.0/2)*(ay1+ay_new1)*dt;
+
+    ux2 = ux2 + (1.0/2)*(ax2+ax_new2)*dt;
+    uy2 = uy2 + (1.0/2)*(ay2+ay_new2)*dt;
+    // cout << ux2 << "   " << uy2 << endl;
+
+    ax1 = ax_new1; ax2 = ax_new2;
+    ay1 = ay_new1; ay2 = ay_new2;
+
+    // delaying loop
+    //for(int i=0; i<=pow(10,5); i++){2+4;}
+}
+
+void myKeyboardControl(unsigned char key, int x, int y)
+{
+	if(key=='A'||key=='a') 	xp1-=0.1;
+	if(key=='D'||key=='d') 	xp1+=0.1;
+	if(key=='W'||key=='w') 	yp1+=0.1;
+	if(key=='S'||key=='s') 	yp1-=0.1;
+	if(key==27) exit(0);
+	glutPostRedisplay();
+}
+
+void display()
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    stars();
+    motion();
+    planet1();
+    planet2();
+
+    glutPostRedisplay();
+
+    glutSwapBuffers();
+}
+
+int main(int argc, char *argv[])
+{
+    srand(time(0));
+
+    glutInit(&argc, argv);
+    glutInitWindowSize(900,700);
+    glutInitWindowPosition(200,50);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
+    glutCreateWindow("Newton Motion");
+
+    setupMyWindow();
+
+    glutDisplayFunc(display);
+    glutKeyboardFunc(myKeyboardControl);
+
+    glutMainLoop();
+
+    return 0;
+}
+
